@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pandoc C:UsersInshalyticsDesktopshopify-tyt-dev-plan.docx -o /dev/stdout -t markdown)",
+      "Bash(pandoc \"C:/Users/Inshalytics/Desktop/shopify-tyt-dev-plan.docx\" -t markdown)",
+      "Bash(python scripts/office/unpack.py \"C:/Users/Inshalytics/Desktop/shopify-tyt-dev-plan.docx\" /tmp/devplan-unpacked/)",
+      "Bash(where python3:*)",
+      "Bash(where python:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npm run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node -e \"const { ApiVersion } = require\\(''@shopify/shopify-app-react-router/server''\\); console.log\\(Object.keys\\(ApiVersion\\).join\\('', ''\\)\\)\")",
+      "Bash(npm install:*)",
+      "Bash(npm test:*)"
+    ]
+  }
+}
