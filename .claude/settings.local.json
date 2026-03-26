@@ -11,7 +11,10 @@
       "Bash(npx tsc:*)",
       "Bash(node -e \"const { ApiVersion } = require\\(''@shopify/shopify-app-react-router/server''\\); console.log\\(Object.keys\\(ApiVersion\\).join\\('', ''\\)\\)\")",
       "Bash(npm install:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(del /f \"node_modules\\\\.prisma\\\\client\\\\query_engine-windows.dll.node\")",
+      "Bash(npm ls:*)",
+      "Bash(npx eslint:*)"
     ]
   }
 }

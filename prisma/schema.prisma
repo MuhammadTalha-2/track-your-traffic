@@ -9,7 +9,6 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL")
 }
 
 model Session {
@@ -42,13 +41,19 @@ model Visit {
   referrer     String   @default("")
   clickIdType  String   @default("") @map("click_id_type")
   visitorHash  String   @default("") @map("visitor_hash")
+  campaignId   Int?     @map("campaign_id")
   createdAt    DateTime @default(now()) @map("created_at")
+
+  // FK relation: visit → campaign
+  campaignRef  Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
   @@index([shop])
   @@index([shop, channel])
   @@index([shop, source])
   @@index([shop, createdAt])
   @@index([shop, visitorHash])
+  @@index([shop, campaign])
+  @@index([campaignId])
   @@map("tyt_visits")
 }
 
@@ -71,9 +76,14 @@ model Campaign {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
+  // Reverse relation: campaign → visits
+  visits      Visit[]
+
   @@unique([shop, slug])
   @@index([shop])
   @@index([shop, status])
+  @@index([shop, campaign])
+  @@index([shop, createdAt])
   @@map("tyt_campaigns")
 }
 

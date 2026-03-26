@@ -9,5 +9,7 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     setupFiles: ["tests/setup.ts"],
     testTimeout: 30000,
+    // Run test files sequentially — they share a real database
+    fileParallelism: false,
   },
 });
