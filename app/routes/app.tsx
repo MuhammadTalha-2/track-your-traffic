@@ -19,7 +19,9 @@ export default function App() {
     <AppProvider embedded apiKey={apiKey}>
       <s-app-nav>
         <s-link href="/app">Dashboard</s-link>
-        <s-link href="/app/additional">Campaigns</s-link>
+        <s-link href="/app/campaigns">Campaigns</s-link>
+        <s-link href="/app/utm-builder">UTM Builder</s-link>
+        <s-link href="/app/settings">Settings</s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>

@@ -14,7 +14,26 @@
       "Bash(npm test:*)",
       "Bash(del /f \"node_modules\\\\.prisma\\\\client\\\\query_engine-windows.dll.node\")",
       "Bash(npm ls:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "mcp__shopify-dev-mcp__learn_shopify_api",
+      "mcp__shopify-dev-mcp__search_docs_chunks",
+      "mcp__shopify-dev-mcp__validate_theme",
+      "Bash(npx terser:*)",
+      "Bash(netstat -ano)",
+      "mcp__shopify-dev-mcp__validate_component_codeblocks",
+      "Bash(grep -E \"app\\\\.campaigns|app\\\\.campaigns\\\\.$id\")",
+      "Bash(grep \"app.campaigns.$id\")",
+      "mcp__shopify-dev-mcp__fetch_full_docs",
+      "WebFetch(domain:shopify.dev)",
+      "Bash(powershell -Command \"Add-Type -AssemblyName System.IO.Compression.FileSystem; $zip = [System.IO.Compression.ZipFile]::OpenRead\\(''D:\\\\Inshalytics\\\\Plugins\\\\Plugins - Final\\\\track-your-traffic.zip''\\); $zip.Entries | ForEach-Object { $_FullName }; $zip.Dispose\\(\\)\")",
+      "Bash(powershell -File:*)",
+      "Bash(powershell -Command \":*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\\\Users$env:USERNAME\\\\AppData\\\\Local\\\\Temp\\\\extract_wp.ps1\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"/tmp/extract_wp.ps1\")",
+      "Bash(node -e \"const fs=require\\(''fs''\\); console.log\\(fs.existsSync\\(''public/icon.svg''\\) ? ''SVG exists'' : ''missing''\\)\")",
+      "Bash(node -e \"try{require\\(''sharp''\\);console.log\\(''sharp available''\\)}catch\\(e\\){console.log\\(''no sharp''\\)}\")",
+      "Bash(where inkscape:*)",
+      "Bash(node -e \":*)"
     ]
   }
 }

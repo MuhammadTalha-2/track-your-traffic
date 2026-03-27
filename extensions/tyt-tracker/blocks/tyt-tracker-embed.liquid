@@ -1,0 +1,57 @@
+<script>
+  window.TYT_CONFIG = {
+    {%- comment -%}
+      logEndpoint uses the Shopify App Proxy URL — stable across dev tunnel restarts.
+      Format: https://{store.permanent_domain}/apps/tyt/log
+      Falls back to the manual theme block setting for backward-compat with old installs.
+    {%- endcomment -%}
+    logEndpoint: {{ shop.permanent_domain | prepend: "https://" | append: "/apps/tyt/log" | json }},
+    cookieDuration: {{ block.settings.cookie_duration | json }},
+    cookieDomain: {{ block.settings.cookie_domain | json }},
+    debugMode: {{ block.settings.debug_mode | json }},
+    shopDomain: {{ shop.permanent_domain | json }}
+  };
+</script>
+
+{% schema %}
+{
+  "name": "Track Your Traffic",
+  "target": "body",
+  "javascript": "tyt-tracker.js",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Tracking settings"
+    },
+    {
+      "type": "range",
+      "id": "cookie_duration",
+      "label": "Cookie duration (days)",
+      "info": "How long to remember a visitor's attribution data.",
+      "min": 30,
+      "max": 730,
+      "step": 10,
+      "default": 180,
+      "unit": "d"
+    },
+    {
+      "type": "text",
+      "id": "cookie_domain",
+      "label": "Cookie domain",
+      "info": "Leave blank for automatic. Set to '.yourdomain.com' for cross-subdomain tracking.",
+      "default": "auto"
+    },
+    {
+      "type": "header",
+      "content": "Privacy & filtering"
+    },
+    {
+      "type": "checkbox",
+      "id": "debug_mode",
+      "label": "Debug mode",
+      "info": "Log detailed attribution data to the browser console.",
+      "default": false
+    }
+  ]
+}
+{% endschema %}

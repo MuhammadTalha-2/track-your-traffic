@@ -1,0 +1,7 @@
+api_version = "2026-04"
+
+[[extensions]]
+name = "Track Your Traffic"
+handle = "tyt-tracker"
+uid = "58bfcf2c-0a51-d6d8-ed5a-7d611357865d1920ccde"
+type = "theme_app_extension"
