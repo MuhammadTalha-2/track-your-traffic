@@ -16,9 +16,10 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   cookie_domain: "",
   debug_mode: "false",
   excluded_ips: "",
+  excluded_referrers: "",  // newline-separated referrer hostnames to block
   exclude_admins: "true",
   exclude_bots: "true",
-  custom_bot_patterns: "",
+  custom_bot_patterns: "", // newline-separated regex patterns (case-insensitive)
   retention_days: "0", // 0 = keep forever
   rate_limit: "5", // requests per minute per IP
 };

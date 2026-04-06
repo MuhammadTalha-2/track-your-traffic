@@ -1,10 +1,11 @@
 import type { LoaderFunctionArgs } from "react-router";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
+import { useLoaderData, useLocation } from "react-router";
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  return null;
+  const { session } = await authenticate.admin(request);
+  return { shopUrl: `https://${session.shop}` };
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -83,8 +84,12 @@ function QuickPresets({ onSelect }: PresetsProps) {
 
 // ── Single URL Builder ────────────────────────────────────────────────────────
 
-function SingleBuilder() {
-  const [baseUrl,  setBaseUrl]  = useState("");
+interface SingleBuilderProps {
+  shopUrl: string;
+}
+
+function SingleBuilder({ shopUrl }: SingleBuilderProps) {
+  const [baseUrl,  setBaseUrl]  = useState(shopUrl);
   const [source,   setSource]   = useState("");
   const [medium,   setMedium]   = useState("");
   const [campaign, setCampaign] = useState("");
@@ -100,6 +105,9 @@ function SingleBuilder() {
     utm_term:     term,
     utm_content:  content,
   });
+
+  // Show generated URL as soon as any UTM field has a value
+  const hasAnyParam = !!(source || medium || campaign || term || content);
 
   const applyPreset = (s: string, m: string) => {
     if (s) setSource(s);
@@ -175,13 +183,34 @@ function SingleBuilder() {
           />
         </s-grid>
 
-        {/* Tagged URL preview */}
-        {taggedUrl && (
-          <s-box padding="base" background="subdued" border-radius="base">
-            <s-stack gap="small-200">
-              <s-heading>Tagged URL</s-heading>
-              <s-text>{taggedUrl}</s-text>
-              <s-button variant="primary" icon={copied ? "check" : "clipboard"} onClick={handleCopy}>
+        {/* Generated URL — shown as soon as any UTM param is filled */}
+        {hasAnyParam && (
+          <s-box padding="base" background="subdued" border-radius="base" border="base">
+            <s-stack gap="small-400">
+              <s-stack gap="small-100">
+                <s-text type="strong">Generated URL</s-text>
+                <div
+                  style={{
+                    background: "var(--s-color-bg, #fff)",
+                    border: "1px solid var(--s-color-border-subdued, #e1e3e5)",
+                    borderRadius: 6,
+                    padding: "10px 12px",
+                    fontFamily: "monospace",
+                    fontSize: 13,
+                    wordBreak: "break-all",
+                    lineHeight: 1.6,
+                    color: "var(--s-color-text, #202223)",
+                    userSelect: "all",
+                  }}
+                >
+                  {taggedUrl || baseUrl}
+                </div>
+              </s-stack>
+              <s-button
+                variant="primary"
+                icon={copied ? "check" : "clipboard"}
+                onClick={handleCopy}
+              >
                 {copied ? "Copied!" : "Copy URL"}
               </s-button>
             </s-stack>
@@ -240,12 +269,26 @@ interface TaggedRow {
 
 type OutputFormat = "plain" | "html" | "markdown";
 
-function BulkTagger() {
-  const [source,   setSource]   = useState("");
-  const [medium,   setMedium]   = useState("");
-  const [campaign, setCampaign] = useState("");
-  const [term,     setTerm]     = useState("");
-  const [content,  setContent]  = useState("");
+interface BulkTaggerProps {
+  initialSource?:   string;
+  initialMedium?:   string;
+  initialCampaign?: string;
+  initialTerm?:     string;
+  initialContent?:  string;
+}
+
+function BulkTagger({
+  initialSource   = "",
+  initialMedium   = "",
+  initialCampaign = "",
+  initialTerm     = "",
+  initialContent  = "",
+}: BulkTaggerProps) {
+  const [source,   setSource]   = useState(initialSource);
+  const [medium,   setMedium]   = useState(initialMedium);
+  const [campaign, setCampaign] = useState(initialCampaign);
+  const [term,     setTerm]     = useState(initialTerm);
+  const [content,  setContent]  = useState(initialContent);
 
   const [manualUrls, setManualUrls] = useState("");
   const [fetchedItems, setFetchedItems] = useState<FetchedItem[]>([]);
@@ -607,7 +650,20 @@ function BulkTagger() {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function UtmBuilderPage() {
-  const [tab, setTab] = useState<"single" | "bulk">("single");
+  const { shopUrl } = useLoaderData<typeof loader>();
+  const { search }  = useLocation();
+  const params      = new URLSearchParams(search);
+
+  const initialTab = params.get("tab") === "bulk" ? "bulk" : "single";
+  const [tab, setTab] = useState<"single" | "bulk">(initialTab as "single" | "bulk");
+
+  const bulkProps: BulkTaggerProps = {
+    initialSource:   params.get("source")   ?? "",
+    initialMedium:   params.get("medium")   ?? "",
+    initialCampaign: params.get("campaign") ?? "",
+    initialTerm:     params.get("term")     ?? "",
+    initialContent:  params.get("content")  ?? "",
+  };
 
   return (
     <s-page heading="UTM Link Builder">
@@ -624,7 +680,7 @@ export default function UtmBuilderPage() {
         </s-box>
       </s-section>
 
-      {tab === "single" ? <SingleBuilder /> : <BulkTagger />}
+      {tab === "single" ? <SingleBuilder shopUrl={shopUrl} /> : <BulkTagger {...bulkProps} />}
     </s-page>
   );
 }

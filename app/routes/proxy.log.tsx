@@ -61,7 +61,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   body.shop = shop;
 
   // Delegate to shared logger (shop already verified via HMAC)
-  const result = await recordVisit(body, request, { skipShopValidation: true });
+  const result = await recordVisit(body as unknown as import("../lib/visit-logger.server").VisitPayload, request, { skipShopValidation: true });
 
   return new Response(JSON.stringify(result), {
     status: 200,

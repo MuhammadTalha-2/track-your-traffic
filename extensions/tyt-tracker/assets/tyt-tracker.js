@@ -139,8 +139,8 @@
     var pairs = search.split("&");
     for (var i = 0; i < pairs.length; i++) {
       var kv = pairs[i].split("=");
-      var k = decodeURIComponent(kv[0] || "");
-      var v = decodeURIComponent(kv[1] || "");
+      var k = decodeURIComponent((kv[0] || "").replace(/\+/g, " "));
+      var v = decodeURIComponent((kv[1] || "").replace(/\+/g, " "));
       if (k) params[k.toLowerCase()] = v;
     }
     return params;
@@ -288,40 +288,14 @@
     };
   }
 
-  // ── Log visit to server ──────────────────────────────────────────────────
+  // ── Log visit / event to server ─────────────────────────────────────────
 
-  function logVisit(data) {
+  function sendToServer(payload) {
     if (!logEndpoint) {
       dbg("No logEndpoint configured — skipping server log.");
       return;
     }
-
-    // Deduplicate: only log once per page per browser session
-    var sessionKey = "tyt_logged_" + win.location.pathname;
-    try {
-      if (win.sessionStorage.getItem(sessionKey)) {
-        dbg("Already logged this page in this session — skipping.");
-        return;
-      }
-      win.sessionStorage.setItem(sessionKey, "1");
-    } catch (e) { /* sessionStorage blocked */ }
-
-    var adminFlag = isAdminBrowsing();
-
-    var payload = {
-      shop: shopDomain,                    // FIX: uses top-level variable, not shadowed 'o'
-      source: data.source || "",
-      medium: data.medium || "",
-      campaign: data.campaign || "",
-      channel: data.channel || "",
-      landing_page: win.location.pathname + win.location.search,
-      referrer: data.referrer || "",
-      click_id_type: getActiveClickId(),
-      is_admin: adminFlag                  // FIX: send flag; server decides based on DB setting
-    };
-
-    dbg("Logging visit:", payload);
-
+    dbg("Sending to server:", payload);
     fetch(logEndpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -334,6 +308,114 @@
     }).catch(function (err) {
       dbg("Log request failed:", err);
     });
+  }
+
+  function buildPayload(data, eventType) {
+    return {
+      shop: shopDomain,
+      source: data.source || "",
+      medium: data.medium || "",
+      campaign: data.campaign || "",
+      channel: data.channel || "",
+      landing_page: win.location.pathname + win.location.search,
+      referrer: data.referrer || "",
+      click_id_type: getActiveClickId(),
+      is_admin: isAdminBrowsing(),
+      event_type: eventType || "pageview"
+    };
+  }
+
+  function logVisit(data) {
+    // Deduplicate: only log pageview once per page per browser session
+    var sessionKey = "tyt_logged_" + win.location.pathname;
+    try {
+      if (win.sessionStorage.getItem(sessionKey)) {
+        dbg("Already logged this page in this session — skipping.");
+        return;
+      }
+      win.sessionStorage.setItem(sessionKey, "1");
+    } catch (e) { /* sessionStorage blocked */ }
+
+    sendToServer(buildPayload(data, "pageview"));
+  }
+
+  // ── Conversion event detection ───────────────────────────────────────────
+
+  function getPageEventType() {
+    var path = win.location.pathname.toLowerCase();
+    // Shopify thank-you / order confirmation
+    if (path.indexOf("/thank_you") !== -1 || path.indexOf("/orders/") !== -1) return "purchase";
+    // Shopify checkout pages
+    if (path.indexOf("/checkouts/") !== -1 || path.indexOf("/checkout") !== -1) return "checkout";
+    return "pageview";
+  }
+
+  function logConversionEvent(eventType, data) {
+    // Deduplicate: fire each conversion event type once per page session
+    var sessionKey = "tyt_event_" + eventType + "_" + win.location.pathname;
+    try {
+      if (win.sessionStorage.getItem(sessionKey)) {
+        dbg("Already fired " + eventType + " on this page — skipping.");
+        return;
+      }
+      win.sessionStorage.setItem(sessionKey, "1");
+    } catch (e) { /* sessionStorage blocked */ }
+
+    dbg("Conversion event:", eventType);
+    sendToServer(buildPayload(data || {}, eventType));
+  }
+
+  function setupConversionTracking(attribution) {
+    var data = attribution || { source: "(direct)", medium: "(none)", campaign: "(not set)",
+                                channel: "direct", referrer: "" };
+
+    // 1. URL-based checkout / purchase detection (fires on page load)
+    var pageEvent = getPageEventType();
+    if (pageEvent !== "pageview") {
+      logConversionEvent(pageEvent, data);
+    }
+
+    // 2. Add-to-cart — listen for Shopify's native cart event (Dawn + many themes)
+    doc.addEventListener("cart:item_added", function () {
+      logConversionEvent("add_to_cart", data);
+    });
+
+    // 3. Add-to-cart via fetch interception (works with AJAX cart themes)
+    if (win.fetch) {
+      var origFetch = win.fetch.bind(win);
+      win.fetch = function (input, init) {
+        var url = typeof input === "string" ? input : (input && input.url) || "";
+        var promise = origFetch(input, init);
+        if (url.indexOf("/cart/add") !== -1) {
+          promise.then(function (res) {
+            if (res.ok) {
+              // Clone so the original response is still consumable
+              logConversionEvent("add_to_cart", data);
+            }
+            return res;
+          }).catch(function () {});
+        }
+        return promise;
+      };
+    }
+
+    // 4. Add-to-cart via XMLHttpRequest interception (older themes)
+    var OrigXHR = win.XMLHttpRequest;
+    win.XMLHttpRequest = function () {
+      var xhr = new OrigXHR();
+      var origOpen = xhr.open.bind(xhr);
+      xhr.open = function (method, url) {
+        if (typeof url === "string" && url.indexOf("/cart/add") !== -1) {
+          xhr.addEventListener("load", function () {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              logConversionEvent("add_to_cart", data);
+            }
+          });
+        }
+        return origOpen.apply(xhr, arguments);
+      };
+      return xhr;
+    };
   }
 
   // ── Public API ───────────────────────────────────────────────────────────
@@ -360,25 +442,16 @@
   // ── Bootstrap ────────────────────────────────────────────────────────────
 
   (function () {
-    // ── "Exclude this browser" — set via Settings page ──────────────────
-    // When the merchant clicks "Exclude my browser →" in the app Settings,
-    // it opens their store with ?tyt_exclude=1. We detect that here and set
-    // a 2-year cookie so subsequent visits are never tracked on this browser.
-    var bootParams = getUrlParams();
-    if (bootParams["tyt_exclude"] === "1") {
-      setCookie("tyt_exclude_me", "1", 730); // 730 days ≈ 2 years
-      dbg("Browser exclusion cookie set. This browser will no longer be tracked.");
-      return; // don't count this 'exclusion visit'
-    }
-    if (getCookie("tyt_exclude_me") === "1") {
-      dbg("tyt_exclude_me cookie found — tracking disabled for this browser.");
-      return;
-    }
-
     var attribution = getAttribution();
 
     if (!attribution) {
-      dbg("Self-referral detected — no new attribution.");
+      dbg("Self-referral detected — logging pageview with existing attribution.");
+      var existingTouch = getCookieJSON(LAST_TOUCH_KEY);
+      // Log pageview with existing attribution so internal navigation is counted
+      if (existingTouch) {
+        logVisit(existingTouch);
+      }
+      setupConversionTracking(existingTouch);
       return;
     }
 
@@ -400,8 +473,9 @@
     // Session touch — always refresh (expires with browser session)
     setCookie(SESSION_KEY, serialised, 0);
 
-    // Log to server
+    // Log pageview + set up conversion event listeners
     logVisit(attribution);
+    setupConversionTracking(attribution);
   })();
 
 }(window, document));

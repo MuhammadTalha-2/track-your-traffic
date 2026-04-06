@@ -1,5 +1,5 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Outlet, useLoaderData, useRouteError } from "react-router";
+import { Outlet, useLoaderData, useRouteError, useLocation, useNavigate } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 
@@ -12,16 +12,36 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return { apiKey: process.env.SHOPIFY_API_KEY || "" };
 };
 
+const NAV_LINKS = [
+  { href: "/app",             label: "Dashboard" },
+  { href: "/app/campaigns",   label: "Campaigns" },
+  { href: "/app/utm-builder", label: "UTM Builder" },
+  { href: "/app/settings",    label: "Settings" },
+] as const;
+
 export default function App() {
   const { apiKey } = useLoaderData<typeof loader>();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  const isActive = (href: string) =>
+    href === "/app"
+      ? pathname === "/app" || pathname === "/app/"
+      : pathname === href || pathname.startsWith(href + "/");
 
   return (
     <AppProvider embedded apiKey={apiKey}>
       <s-app-nav>
-        <s-link href="/app">Dashboard</s-link>
-        <s-link href="/app/campaigns">Campaigns</s-link>
-        <s-link href="/app/utm-builder">UTM Builder</s-link>
-        <s-link href="/app/settings">Settings</s-link>
+        {NAV_LINKS.map(({ href, label }) => (
+          <a
+            key={href}
+            href={href}
+            aria-current={isActive(href) ? "page" : undefined}
+            onClick={(e) => { e.preventDefault(); navigate(href); }}
+          >
+            {label}
+          </a>
+        ))}
       </s-app-nav>
       <Outlet />
     </AppProvider>

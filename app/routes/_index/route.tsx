@@ -21,9 +21,9 @@ export default function App() {
   return (
     <div className={styles.index}>
       <div className={styles.content}>
-        <h1 className={styles.heading}>A short heading about [your app]</h1>
+        <h1 className={styles.heading}>Track Your Traffic</h1>
         <p className={styles.text}>
-          A tagline about [your app] that describes your value proposition.
+          UTM attribution and traffic analytics for your Shopify store. Know exactly where your visitors come from.
         </p>
         {showForm && (
           <Form className={styles.form} method="post" action="/auth/login">
@@ -39,16 +39,13 @@ export default function App() {
         )}
         <ul className={styles.list}>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>UTM Campaign Tracking</strong>. Track every UTM-tagged campaign and see exactly how many visits each one generates.
           </li>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>Traffic Source Breakdown</strong>. See which channels — organic search, paid ads, social, email, and more — are driving your store traffic.
           </li>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>Device &amp; Country Insights</strong>. Understand whether your visitors are on mobile or desktop, and where they are in the world.
           </li>
         </ul>
       </div>

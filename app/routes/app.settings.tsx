@@ -168,21 +168,13 @@ export default function SettingsPage() {
   }, [revalidator]);
 
   // ── Export CSV ────────────────────────────────────────────────────────────
-  const handleExport = useCallback(async () => {
-    const res = await fetch(`/api/stats?days=36500`);
-    const stats = await res.json();
-    const header = "Date,Visits,Uniques\n";
-    const body = (stats.daily || [])
-      .map((d: any) => `${d.date},${d.visits},${d.uniques}`)
-      .join("\n");
-    const blob = new Blob([header + body], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
-    a.download = `tyt-export-${shop}-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [shop]);
+  const [exportDays,      setExportDays]      = useState("0");
+  const [exportEventType, setExportEventType] = useState("all");
+
+  const handleExport = useCallback(() => {
+    const params = new URLSearchParams({ days: exportDays, event_type: exportEventType });
+    window.location.href = `/api/export?${params}`;
+  }, [exportDays, exportEventType]);
 
   // Snap retention dropdown — if stored value isn't in list, add a "Custom" option
   const retentionOptions = RETENTION_OPTIONS.some((o) => o.value === form.retention_days)
@@ -272,31 +264,6 @@ export default function SettingsPage() {
               onChange={toggle("exclude_bots")}
             />
 
-            {/* ── Exclude this browser ──────────────────────────────────── */}
-            <s-box padding="base" border="base" border-radius="base">
-              <s-stack gap="small-300">
-                <s-stack gap="small-100">
-                  <s-heading>Exclude this browser</s-heading>
-                  <s-text color="subdued">
-                    Click the link below to visit your store. The tracker will set a
-                    2-year exclusion cookie so your own visits are never counted,
-                    even if your IP changes.
-                  </s-text>
-                </s-stack>
-                <s-button
-                  variant="secondary"
-                  icon="external"
-                  onClick={() => window.open(`https://${shop}/?tyt_exclude=1`, "_blank")}
-                >
-                  Exclude my browser →
-                </s-button>
-                <s-text color="subdued">
-                  To re-enable tracking on your browser, clear your browser cookies or delete
-                  the <code style={{ fontFamily: "monospace" }}>tyt_exclude_me</code> cookie on your store.
-                </s-text>
-              </s-stack>
-            </s-box>
-
             {/* ── IP exclusion ─────────────────────────────────────────── */}
             <s-box padding="base" border="base" border-radius="base">
               <s-stack gap="small-300">
@@ -335,13 +302,35 @@ export default function SettingsPage() {
             </s-box>
 
             <s-text-area
-              label="Custom bot patterns (one per line, case-insensitive)"
+              label="Custom bot patterns (one per line, case-insensitive regex)"
               name="custom_bot_patterns"
               rows={4}
-              placeholder={"MyCustomBot\nInternalCrawler"}
+              placeholder={"MyCustomBot\nInternalCrawler\nMyMonitor"}
               value={form.custom_bot_patterns}
               onChange={set("custom_bot_patterns")}
             />
+
+            {/* ── Referrer spam filtering ────────────────────────────── */}
+            <s-box padding="base" border="base" border-radius="base">
+              <s-stack gap="small-300">
+                <s-stack gap="small-100">
+                  <s-heading>Blocked referrers</s-heading>
+                  <s-text color="subdued">
+                    Visits from these referrer hostnames will not be recorded.
+                    One entry per line (e.g. <code style={{ fontFamily: "monospace" }}>semalt.com</code>).
+                    Partial matches are supported — e.g. <code style={{ fontFamily: "monospace" }}>semalt</code> blocks all semalt subdomains.
+                  </s-text>
+                </s-stack>
+                <s-text-area
+                  label="Blocked referrers (one per line)"
+                  name="excluded_referrers"
+                  rows={5}
+                  placeholder={"semalt.com\nbuttons-for-website.com\nfree-share-buttons.com\nfab-traffic.com"}
+                  value={form.excluded_referrers}
+                  onChange={set("excluded_referrers")}
+                />
+              </s-stack>
+            </s-box>
 
             <s-number-field
               label="Rate limit (requests per minute per IP)"
@@ -397,7 +386,7 @@ export default function SettingsPage() {
               onChange={set("retention_days")}
             >
               {retentionOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <s-option key={o.value} value={o.value}>{o.label}</s-option>
               ))}
             </s-select>
             <s-text color="subdued">
@@ -415,12 +404,40 @@ export default function SettingsPage() {
             {/* Export */}
             <s-box padding="base" border="base" border-radius="base">
               <s-stack gap="base">
-                <s-heading>Export Data</s-heading>
+                <s-heading>Export Visit Data</s-heading>
                 <s-text color="subdued">
-                  Download a CSV of your daily visit totals (date, visits, uniques).
+                  Download a full CSV of all individual visit records including source,
+                  medium, campaign, channel, landing page, referrer, and event type.
                 </s-text>
+                <s-grid
+                  grid-template-columns="@container (inline-size <= 400px) 1fr, 1fr 1fr"
+                  gap="base"
+                >
+                  <s-select
+                    label="Date range"
+                    value={exportDays}
+                    onChange={(e: any) => setExportDays(e.currentTarget.value)}
+                  >
+                    <s-option value="0">All time</s-option>
+                    <s-option value="7">Last 7 days</s-option>
+                    <s-option value="30">Last 30 days</s-option>
+                    <s-option value="90">Last 90 days</s-option>
+                    <s-option value="365">Last year</s-option>
+                  </s-select>
+                  <s-select
+                    label="Event type"
+                    value={exportEventType}
+                    onChange={(e: any) => setExportEventType(e.currentTarget.value)}
+                  >
+                    <s-option value="all">All events</s-option>
+                    <s-option value="pageview">Page views</s-option>
+                    <s-option value="add_to_cart">Add to cart</s-option>
+                    <s-option value="checkout">Checkout</s-option>
+                    <s-option value="purchase">Purchase</s-option>
+                  </s-select>
+                </s-grid>
                 <s-button variant="secondary" icon="export" onClick={handleExport}>
-                  Export CSV
+                  Download CSV
                 </s-button>
               </s-stack>
             </s-box>

@@ -33,7 +33,18 @@
       "Bash(node -e \"const fs=require\\(''fs''\\); console.log\\(fs.existsSync\\(''public/icon.svg''\\) ? ''SVG exists'' : ''missing''\\)\")",
       "Bash(node -e \"try{require\\(''sharp''\\);console.log\\(''sharp available''\\)}catch\\(e\\){console.log\\(''no sharp''\\)}\")",
       "Bash(where inkscape:*)",
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "Bash(grep -r \"s-link\\\\|s-app-nav\\\\|aria-current\\\\|active\\\\|selected\" D:/Inshalytics/Shopify/Apps/track-your-traffic/node_modules/@shopify/polaris-types/dist --include=*.d.ts -l)",
+      "Bash(grep -r s-app-nav D:/Inshalytics/Shopify/Apps/track-your-traffic/node_modules/@shopify/shopify-app-react-router --include=*.js --include=*.ts -l)",
+      "Bash(find D:/Inshalytics/Shopify/Apps/track-your-traffic/node_modules/@shopify/app-bridge-react -name *.d.ts)",
+      "Bash(find /d/Inshalytics/Shopify/Apps/track-your-traffic -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.jsx -o -name *.json -o -name *.toml -o -name *.md \\\\\\) ! -path */node_modules/* ! -path */.shopify/*)",
+      "Bash(find /d/Inshalytics/Shopify/Apps/track-your-traffic -maxdepth 3 -type d ! -path */node_modules/* ! -path */.shopify/* ! -path */.react-router/*)",
+      "Bash(find /d/Inshalytics/Shopify/Apps/track-your-traffic/extensions/tyt-tracker -type f ! -path */node_modules/*)",
+      "Bash(wc -l /d/Inshalytics/Shopify/Apps/track-your-traffic/app/routes/*.tsx)",
+      "Bash(find /d/Inshalytics/Shopify/Apps/track-your-traffic -type f -name *.sql)",
+      "Bash(find D:/Inshalytics/Shopify/Apps/track-your-traffic -maxdepth 3 -type d -not -path */.git* -not -path */node_modules* -not -path */.react-router* -not -path */dist*)",
+      "Bash(grep -E \"\\\\.\\(md|txt|json|toml|yml\\)$\")",
+      "Bash(ls .env*)"
     ]
   }
 }

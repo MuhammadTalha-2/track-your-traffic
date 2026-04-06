@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { useLoaderData, useNavigate, useRevalidator } from "react-router";
+import { useLoaderData, useNavigate, useRevalidator, useOutlet } from "react-router";
 import { useState, useCallback, useEffect } from "react";
 import { authenticate } from "../shopify.server";
 import { listCampaigns } from "../lib/queries.server";
@@ -180,18 +180,23 @@ function modalHide(id: string) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CampaignsPage() {
-  const { campaigns, currentStatus } = useLoaderData<typeof loader>();
-  const navigate = useNavigate();
+  // ── ALL hooks must be at the top — no hooks after an early return ──────────
+  const outlet      = useOutlet();
+  const loaderData  = useLoaderData<typeof loader>();
+  const navigate    = useNavigate();
   const revalidator = useRevalidator();
 
-  const [formData, setFormData] = useState<CampaignFormData>(EMPTY_FORM);
+  const [formData, setFormData]       = useState<CampaignFormData>(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [pendingModal, setPendingModal] = useState<"form" | "delete" | null>(null);
 
-  const set = (field: keyof CampaignFormData) => (e: any) =>
-    setFormData((f) => ({ ...f, [field]: e.currentTarget?.value ?? e.target?.value ?? "" }));
+  const set = (field: keyof CampaignFormData) => (e: any) => {
+    // s-number-field and s-date-field dispatch CustomEvent with value in e.detail;
+    // s-text-field / s-select / s-text-area use the standard e.target.value path.
+    const val = e.detail?.value ?? e.detail ?? e.currentTarget?.value ?? e.target?.value ?? "";
+    setFormData((f) => ({ ...f, [field]: String(val) }));
+  };
 
-  // Open modal AFTER React re-renders with the new form data
   useEffect(() => {
     if (pendingModal === "form") {
       modalShow("campaign-form-modal");
@@ -252,6 +257,13 @@ export default function CampaignsPage() {
     });
     revalidator.revalidate();
   }, [revalidator]);
+
+  // ── Early return AFTER all hooks ──────────────────────────────────────────
+  // When navigating to /app/campaigns/:id, React Router renders this component
+  // as the parent layout and injects the child (campaign stats page) via outlet.
+  if (outlet) return outlet;
+
+  const { campaigns, currentStatus } = loaderData;
 
   const filterTab = (status: string) => {
     navigate(`/app/campaigns${status === "all" ? "" : `?status=${status}`}`);
@@ -369,6 +381,20 @@ export default function CampaignsPage() {
                         icon="edit"
                         onClick={() => handleEdit(c as CampaignRow)}
                         accessibility-label="Edit campaign"
+                      />
+                      <s-button
+                        variant="tertiary"
+                        icon="link"
+                        onClick={() => {
+                          const p = new URLSearchParams({ tab: "bulk" });
+                          if (c.source)   p.set("source",   c.source);
+                          if (c.medium)   p.set("medium",   c.medium);
+                          if (c.campaign) p.set("campaign", c.campaign);
+                          if (c.term)     p.set("term",     c.term);
+                          if (c.content)  p.set("content",  c.content);
+                          navigate(`/app/utm-builder?${p}`);
+                        }}
+                        accessibility-label="Tag URLs in UTM Builder"
                       />
                       <s-button
                         variant="tertiary"

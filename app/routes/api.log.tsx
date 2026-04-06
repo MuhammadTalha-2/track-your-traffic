@@ -56,7 +56,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (!shop) return json({ ok: false, reason: "missing_shop" }, 400);
 
   // Delegate to shared logger (with shop DB validation)
-  const result = await recordVisit(body, request, { skipShopValidation: false });
+  const result = await recordVisit(body as unknown as import("../lib/visit-logger.server").VisitPayload, request, { skipShopValidation: false });
 
   if (!result.ok) {
     const status = result.reason === "rate_limited" ? 429 : 200;

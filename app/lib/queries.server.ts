@@ -47,6 +47,23 @@ export interface CampaignRow {
   visits: number;
 }
 
+export interface DeviceRow {
+  deviceType: string;
+  visits: number;
+}
+
+export interface CountryRow {
+  country: string;
+  visits: number;
+}
+
+export interface RevenueStats {
+  totalRevenue: number;
+  currency: string;
+  prevRevenue: number;
+  bySource: { source: string; medium: string; revenue: number; orders: number }[];
+}
+
 export interface CampaignPageRow {
   landingPage: string;
   visits: number;
@@ -56,6 +73,8 @@ export interface DashboardStats {
   period: number;
   totalVisits: number;
   uniqueVisitors: number;
+  prevTotalVisits: number;
+  prevUniqueVisitors: number;
   today: number;
   yesterday: number;
   byChannel: ChannelRow[];
@@ -63,6 +82,8 @@ export interface DashboardStats {
   daily: DailyRow[];
   topPages: PageRow[];
   topCampaigns: CampaignRow[];
+  byDevice: DeviceRow[];
+  byCountry: CountryRow[];
 }
 
 export interface CampaignWithCounts {
@@ -314,6 +335,113 @@ export async function getTopCampaigns(
 }
 
 /**
+ * Totals for the PREVIOUS period (for % change comparison).
+ * e.g. if days=30, returns totals for the 30 days before that window.
+ */
+export async function getPrevPeriodTotals(shop: string, days: number): Promise<Totals> {
+  const from = daysAgo(days * 2);
+  const to   = daysAgo(days);
+  const rows = await prisma.$queryRaw<
+    { total_visits: bigint; unique_visitors: bigint }[]
+  >`
+    SELECT COUNT(*)                        AS total_visits,
+           COUNT(DISTINCT "visitor_hash")  AS unique_visitors
+    FROM   "tyt_visits"
+    WHERE  "shop" = ${shop}
+      AND  "created_at" >= ${from}
+      AND  "created_at" <  ${to}
+  `;
+  return {
+    totalVisits:    Number(rows[0]?.total_visits    ?? 0),
+    uniqueVisitors: Number(rows[0]?.unique_visitors ?? 0),
+  };
+}
+
+/** Visits grouped by device type (mobile / tablet / desktop). */
+export async function getByDevice(shop: string, days: number): Promise<DeviceRow[]> {
+  const since = daysAgo(days);
+  const rows = await prisma.$queryRaw<
+    { device_type: string; visits: bigint }[]
+  >`
+    SELECT "device_type",
+           COUNT(*) AS visits
+    FROM   "tyt_visits"
+    WHERE  "shop" = ${shop}
+      AND  "created_at" >= ${since}
+    GROUP BY "device_type"
+    ORDER BY visits DESC
+  `;
+  return rows.map((r) => ({ deviceType: r.device_type, visits: Number(r.visits) }));
+}
+
+/** Visits grouped by country (ISO-2 code). Top 15. */
+export async function getByCountry(shop: string, days: number): Promise<CountryRow[]> {
+  const since = daysAgo(days);
+  const rows = await prisma.$queryRaw<
+    { country: string; visits: bigint }[]
+  >`
+    SELECT "country",
+           COUNT(*) AS visits
+    FROM   "tyt_visits"
+    WHERE  "shop" = ${shop}
+      AND  "created_at" >= ${since}
+      AND  "country" != ''
+    GROUP BY "country"
+    ORDER BY visits DESC
+    LIMIT 15
+  `;
+  return rows.map((r) => ({ country: r.country, visits: Number(r.visits) }));
+}
+
+/** Revenue stats from tyt_orders for the period + previous period. */
+export async function getRevenueStats(shop: string, days: number): Promise<RevenueStats> {
+  const since    = daysAgo(days);
+  const prevFrom = daysAgo(days * 2);
+
+  const [current, prev, bySource] = await Promise.all([
+    // Current period total
+    prisma.$queryRaw<{ total: number | null; currency: string }[]>`
+      SELECT SUM("revenue") AS total, MAX("currency") AS currency
+      FROM   "tyt_orders"
+      WHERE  "shop" = ${shop}
+        AND  "created_at" >= ${since}
+    `,
+    // Previous period total
+    prisma.$queryRaw<{ total: number | null }[]>`
+      SELECT SUM("revenue") AS total
+      FROM   "tyt_orders"
+      WHERE  "shop" = ${shop}
+        AND  "created_at" >= ${prevFrom}
+        AND  "created_at" <  ${since}
+    `,
+    // By source breakdown
+    prisma.$queryRaw<{ source: string; medium: string; revenue: number; orders: bigint }[]>`
+      SELECT "source", "medium",
+             SUM("revenue")  AS revenue,
+             COUNT(*)        AS orders
+      FROM   "tyt_orders"
+      WHERE  "shop" = ${shop}
+        AND  "created_at" >= ${since}
+      GROUP BY "source", "medium"
+      ORDER BY revenue DESC
+      LIMIT 10
+    `,
+  ]);
+
+  return {
+    totalRevenue: Number(current[0]?.total ?? 0),
+    currency:     current[0]?.currency ?? "USD",
+    prevRevenue:  Number(prev[0]?.total ?? 0),
+    bySource: bySource.map((r) => ({
+      source:  r.source,
+      medium:  r.medium,
+      revenue: Number(r.revenue),
+      orders:  Number(r.orders),
+    })),
+  };
+}
+
+/**
  * Visit count for today.
  *
  * WordPress SQL:
@@ -356,22 +484,29 @@ export async function getDashboardStats(
 ): Promise<DashboardStats> {
   const clampedDays = Math.min(Math.max(days, 1), 365);
 
-  const [totals, byChannel, topSources, daily, topPages, topCampaigns, today, yesterday] =
-    await Promise.all([
-      getTotals(shop, clampedDays),
-      getByChannel(shop, clampedDays),
-      getTopSources(shop, clampedDays),
-      getDaily(shop, clampedDays),
-      getTopPages(shop, clampedDays),
-      getTopCampaigns(shop, clampedDays),
-      getTodayCount(shop),
-      getYesterdayCount(shop),
-    ]);
+  const [
+    totals, prevTotals, byChannel, topSources, daily,
+    topPages, topCampaigns, byDevice, byCountry, today, yesterday,
+  ] = await Promise.all([
+    getTotals(shop, clampedDays),
+    getPrevPeriodTotals(shop, clampedDays),
+    getByChannel(shop, clampedDays),
+    getTopSources(shop, clampedDays),
+    getDaily(shop, clampedDays),
+    getTopPages(shop, clampedDays),
+    getTopCampaigns(shop, clampedDays),
+    getByDevice(shop, clampedDays),
+    getByCountry(shop, clampedDays),
+    getTodayCount(shop),
+    getYesterdayCount(shop),
+  ]);
 
   return {
     period: clampedDays,
-    totalVisits: totals.totalVisits,
-    uniqueVisitors: totals.uniqueVisitors,
+    totalVisits:        totals.totalVisits,
+    uniqueVisitors:     totals.uniqueVisitors,
+    prevTotalVisits:    prevTotals.totalVisits,
+    prevUniqueVisitors: prevTotals.uniqueVisitors,
     today,
     yesterday,
     byChannel,
@@ -379,6 +514,8 @@ export async function getDashboardStats(
     daily,
     topPages,
     topCampaigns,
+    byDevice,
+    byCountry,
   };
 }
 

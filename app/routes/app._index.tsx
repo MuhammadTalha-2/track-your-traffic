@@ -33,19 +33,32 @@ function channelLabel(channel: string) {
   return channel.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function pctDiff(current: number, prev: number): number {
+  if (prev === 0) return current > 0 ? 100 : 0;
+  return Math.round(((current - prev) / prev) * 100);
+}
+
+function changeTone(pct: number): "success" | "critical" | "warning" {
+  return pct > 0 ? "success" : pct < 0 ? "critical" : "warning";
+}
+
+const DEVICE_ICON: Record<string, string> = {
+  mobile:  "📱",
+  tablet:  "⬛",
+  desktop: "🖥",
+};
+
 // ── Metric Card ───────────────────────────────────────────────────────────────
 
 function MetricCard({
-  label,
-  value,
-  subtext,
-  badge,
-  channelBadge,
+  label, value, subtext, pct, channelBadge,
 }: {
   label: string;
   value: string | number;
   subtext?: string;
-  badge?: { label: string; tone: "success" | "critical" | "warning" };
+  pct?: number;
   channelBadge?: { channel: string };
 }) {
   return (
@@ -54,12 +67,12 @@ function MetricCard({
         <s-text color="subdued">{label}</s-text>
         <s-stack direction="inline" gap="small-300" align-items="center">
           <s-heading>{String(value)}</s-heading>
-          {badge && badge.label !== "0%" && (
+          {pct !== undefined && pct !== 0 && (
             <s-badge
-              tone={badge.tone}
-              icon={badge.tone === "success" ? "arrow-up" : badge.tone === "critical" ? "arrow-down" : undefined}
+              tone={changeTone(pct)}
+              icon={pct > 0 ? "arrow-up" : "arrow-down"}
             >
-              {badge.label}
+              {Math.abs(pct)}%
             </s-badge>
           )}
           {channelBadge && (
@@ -112,15 +125,15 @@ function Sparkline({ data }: { data: { date: string; visits: number; uniques: nu
   const toX = (i: number) => pad.left + (i / Math.max(data.length - 1, 1)) * cW;
   const toY = (v: number) => pad.top + cH - (v / maxV) * cH;
 
-  const visitPath = data.map((d, i) => `${i === 0 ? "M" : "L"} ${toX(i)} ${toY(d.visits)}`).join(" ");
+  const visitPath  = data.map((d, i) => `${i === 0 ? "M" : "L"} ${toX(i)} ${toY(d.visits)}`).join(" ");
   const uniquePath = data.map((d, i) => `${i === 0 ? "M" : "L"} ${toX(i)} ${toY(d.uniques)}`).join(" ");
   const areaPath =
     `M ${toX(0)} ${toY(data[0].visits)} ` +
     data.map((d, i) => `L ${toX(i)} ${toY(d.visits)}`).join(" ") +
     ` L ${toX(data.length - 1)} ${pad.top + cH} L ${toX(0)} ${pad.top + cH} Z`;
 
-  const yTicks = [0, Math.round(maxV / 2), maxV];
-  const step = Math.max(1, Math.floor(data.length / 6));
+  const yTicks  = [0, Math.round(maxV / 2), maxV];
+  const step    = Math.max(1, Math.floor(data.length / 6));
   const xLabels = data.filter((_, i) => i % step === 0 || i === data.length - 1);
 
   return (
@@ -148,7 +161,7 @@ function Sparkline({ data }: { data: { date: string; visits: number; uniques: nu
       })}
       <path d={areaPath} fill="url(#visitGrad)" />
       <path d={uniquePath} fill="none" stroke="#8c9196" strokeWidth="1.5" strokeDasharray="5 3" strokeLinecap="round" />
-      <path d={visitPath} fill="none" stroke="#2c6ecb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={visitPath}  fill="none" stroke="#2c6ecb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       {data.length <= 31 &&
         data.map((d, i) => (
           <circle key={i} cx={toX(i)} cy={toY(d.visits)} r="3" fill="#2c6ecb" stroke="#fff" strokeWidth="1.5" />
@@ -161,7 +174,6 @@ function Sparkline({ data }: { data: { date: string; visits: number; uniques: nu
           </text>
         );
       })}
-      {/* Legend */}
       <line x1={width - 190} y1={10} x2={width - 172} y2={10} stroke="#2c6ecb" strokeWidth="2.5" />
       <text x={width - 168} y={14} fontSize="11" fill="#6d7175">Visits</text>
       <line x1={width - 110} y1={10} x2={width - 92} y2={10} stroke="#8c9196" strokeWidth="1.5" strokeDasharray="5 3" />
@@ -173,37 +185,46 @@ function Sparkline({ data }: { data: { date: string; visits: number; uniques: nu
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 const DATE_RANGES = [
-  { value: "7",   label: "7 days" },
+  { value: "7",   label: "7 days"  },
   { value: "14",  label: "14 days" },
   { value: "30",  label: "30 days" },
   { value: "90",  label: "90 days" },
-  { value: "365", label: "1 year" },
+  { value: "365", label: "1 year"  },
 ] as const;
 
 export default function Dashboard() {
   const { stats } = useLoaderData<typeof loader>();
-  const navigate   = useNavigate();
+  const navigate  = useNavigate();
   const [days, setDays] = useState(String(stats.period));
 
-  const pctChange =
+  // KPI % changes vs previous period
+  const visitsPct   = pctDiff(stats.totalVisits,    stats.prevTotalVisits);
+  const uniquesPct  = pctDiff(stats.uniqueVisitors, stats.prevUniqueVisitors);
+  const todayPct    =
     stats.yesterday > 0
       ? Math.round(((stats.today - stats.yesterday) / stats.yesterday) * 100)
       : stats.today > 0 ? 100 : 0;
 
-  const changeTone: "success" | "critical" | "warning" =
-    pctChange > 0 ? "success" : pctChange < 0 ? "critical" : "warning";
-
   const topChannel = stats.byChannel[0];
-  const maxSourceVisits = Math.max(...(stats.topSources.map((r) => r.visits)), 1);
-  const maxPageVisits  = Math.max(...(stats.topPages.map((r) => r.visits)), 1);
+  const maxSourceVisits  = Math.max(...stats.topSources.map((r) => r.visits), 1);
+  const maxPageVisits    = Math.max(...stats.topPages.map((r) => r.visits), 1);
+  const maxCountryVisits = Math.max(...stats.byCountry.map((r) => r.visits), 1);
+
+  const totalDeviceVisits = stats.byDevice.reduce((s, r) => s + r.visits, 0) || 1;
 
   return (
     <s-page heading="Track Your Traffic" inline-size="large">
       <style>{`
-        .tyt-kpi-grid     { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
-        .tyt-two-col-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:0 0 16px; }
-        @media (max-width:900px) { .tyt-kpi-grid { grid-template-columns:repeat(2,1fr); } }
-        @media (max-width:480px) { .tyt-kpi-grid { grid-template-columns:1fr; } .tyt-two-col-grid { grid-template-columns:1fr; } }
+        .tyt-kpi-grid      { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+        .tyt-two-col-grid  { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:0 0 16px; }
+        .tyt-three-col-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; padding:0 0 16px; }
+        @media (max-width:1100px) { .tyt-three-col-grid { grid-template-columns:1fr 1fr; } }
+        @media (max-width:900px)  { .tyt-kpi-grid { grid-template-columns:repeat(2,1fr); } }
+        @media (max-width:600px)  {
+          .tyt-kpi-grid { grid-template-columns:1fr; }
+          .tyt-two-col-grid  { grid-template-columns:1fr; }
+          .tyt-three-col-grid{ grid-template-columns:1fr; }
+        }
       `}</style>
 
       {/* ── Period selector ──────────────────────────────────────────────── */}
@@ -233,24 +254,26 @@ export default function Dashboard() {
           <MetricCard
             label="Total Visits"
             value={stats.totalVisits.toLocaleString()}
-            subtext={`Last ${days} days`}
+            pct={visitsPct}
+            subtext={`vs prev ${days} days`}
           />
           <MetricCard
             label="Unique Visitors"
             value={stats.uniqueVisitors.toLocaleString()}
-            subtext="By anonymous hash"
-          />
-          <MetricCard
-            label="Today"
-            value={stats.today.toLocaleString()}
-            badge={pctChange !== 0 ? { label: `${Math.abs(pctChange)}%`, tone: changeTone } : undefined}
-            subtext="vs yesterday"
+            pct={uniquesPct}
+            subtext={`vs prev ${days} days`}
           />
           <MetricCard
             label="Top Channel"
             value={topChannel ? channelLabel(topChannel.channel) : "—"}
-            channelBadge={topChannel ? { channel: topChannel.channel } : undefined}
             subtext={topChannel ? `${topChannel.visits.toLocaleString()} visits` : "No data yet"}
+            channelBadge={topChannel ? { channel: topChannel.channel } : undefined}
+          />
+          <MetricCard
+            label="Today"
+            value={stats.today.toLocaleString()}
+            pct={todayPct}
+            subtext="vs yesterday"
           />
         </div>
       </s-section>
@@ -313,8 +336,10 @@ export default function Dashboard() {
                 {stats.topSources.map((row) => (
                   <s-table-row key={`${row.source}-${row.medium}`}>
                     <s-table-cell>
-                      <s-stack gap="small-100">
-                        <s-text type="strong">{row.source}</s-text>
+                      <s-stack gap="small-100" style={{ maxWidth: 200 }}>
+                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <s-text type="strong">{row.source}</s-text>
+                        </div>
                         {row.medium && <s-text color="subdued">{row.medium}</s-text>}
                       </s-stack>
                     </s-table-cell>
@@ -327,9 +352,7 @@ export default function Dashboard() {
               </s-table-body>
             </s-table>
           ) : (
-            <s-box padding="base">
-              <s-text color="subdued">No source data yet.</s-text>
-            </s-box>
+            <s-box padding="base"><s-text color="subdued">No source data yet.</s-text></s-box>
           )}
         </s-section>
 
@@ -345,7 +368,9 @@ export default function Dashboard() {
                 {stats.topPages.map((row) => (
                   <s-table-row key={row.landingPage}>
                     <s-table-cell>
-                      <s-text>{row.landingPage || "/"}</s-text>
+                      <div title={row.landingPage || "/"} style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <s-text>{row.landingPage || "/"}</s-text>
+                      </div>
                     </s-table-cell>
                     <s-table-cell>{row.visits.toLocaleString()}</s-table-cell>
                     <s-table-cell>
@@ -356,8 +381,80 @@ export default function Dashboard() {
               </s-table-body>
             </s-table>
           ) : (
+            <s-box padding="base"><s-text color="subdued">No page data yet.</s-text></s-box>
+          )}
+        </s-section>
+      </div>
+
+      {/* ── Device + Country ─────────────────────────────────────────────── */}
+      <div className="tyt-two-col-grid">
+        {/* Device Breakdown */}
+        <s-section heading="Devices">
+          {stats.byDevice.length > 0 ? (
+            <s-stack gap="base">
+              {stats.byDevice.map((row) => {
+                const pct = Math.round((row.visits / totalDeviceVisits) * 100);
+                return (
+                  <s-stack key={row.deviceType} gap="small-200">
+                    <s-stack direction="inline" align-items="center" gap="small-300">
+                      <span style={{ fontSize: 18 }}>{DEVICE_ICON[row.deviceType] ?? "💻"}</span>
+                      <s-text type="strong" style={{ textTransform: "capitalize" }}>
+                        {row.deviceType}
+                      </s-text>
+                      <s-text color="subdued">{row.visits.toLocaleString()} visits</s-text>
+                    </s-stack>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ flex: 1, height: 8, background: "#e1e3e5", borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{
+                          width: `${pct}%`, height: "100%",
+                          background: row.deviceType === "mobile" ? "#2c6ecb" : row.deviceType === "tablet" ? "#a855f7" : "#10b981",
+                          borderRadius: 4,
+                        }} />
+                      </div>
+                      <span style={{ fontSize: 12, color: "#6d7175", minWidth: 32 }}>{pct}%</span>
+                    </div>
+                  </s-stack>
+                );
+              })}
+            </s-stack>
+          ) : (
+            <s-box padding="base"><s-text color="subdued">No device data yet.</s-text></s-box>
+          )}
+        </s-section>
+
+        {/* Country Breakdown */}
+        <s-section heading="Top Countries">
+          {stats.byCountry.length > 0 ? (
+            <s-table variant="auto" accessibility-label="Top countries">
+              <s-table-header-row>
+                <s-table-header list-slot="primary">Country</s-table-header>
+                <s-table-header list-slot="labeled" format="numeric">Visits</s-table-header>
+                <s-table-header list-slot="labeled">Share</s-table-header>
+              </s-table-header-row>
+              <s-table-body>
+                {stats.byCountry.map((row) => (
+                  <s-table-row key={row.country}>
+                    <s-table-cell>
+                      <s-stack direction="inline" gap="small-200" align-items="center">
+                        <span style={{ fontSize: 18 }}>
+                          {countryFlag(row.country)}
+                        </span>
+                        <s-text>{row.country}</s-text>
+                      </s-stack>
+                    </s-table-cell>
+                    <s-table-cell>{row.visits.toLocaleString()}</s-table-cell>
+                    <s-table-cell>
+                      <Bar value={row.visits} max={maxCountryVisits} color="#f59e0b" />
+                    </s-table-cell>
+                  </s-table-row>
+                ))}
+              </s-table-body>
+            </s-table>
+          ) : (
             <s-box padding="base">
-              <s-text color="subdued">No page data yet.</s-text>
+              <s-text color="subdued">
+                Country data requires Cloudflare or Vercel hosting.
+              </s-text>
             </s-box>
           )}
         </s-section>
@@ -391,6 +488,14 @@ export default function Dashboard() {
         </s-section>
       )}
     </s-page>
+  );
+}
+
+/** Convert ISO-2 country code to emoji flag. */
+function countryFlag(code: string): string {
+  if (!code || code.length !== 2) return "🌐";
+  return String.fromCodePoint(
+    ...code.toUpperCase().split("").map((c) => 0x1f1e0 + c.charCodeAt(0) - 65),
   );
 }
 

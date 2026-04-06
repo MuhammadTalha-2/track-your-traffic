@@ -44,6 +44,9 @@ model Visit {
   clickIdType  String   @default("") @map("click_id_type")
   visitorHash  String   @default("") @map("visitor_hash")
   campaignId   Int?     @map("campaign_id")
+  eventType    String   @default("pageview") @map("event_type")
+  deviceType   String   @default("desktop") @map("device_type")
+  country      String   @default("") @map("country")
   createdAt    DateTime @default(now()) @map("created_at")
 
   // FK relation: visit → campaign
@@ -55,8 +58,29 @@ model Visit {
   @@index([shop, createdAt])
   @@index([shop, visitorHash])
   @@index([shop, campaign])
+  @@index([shop, eventType])
+  @@index([shop, deviceType])
+  @@index([shop, country])
   @@index([campaignId])
   @@map("tyt_visits")
+}
+
+model Order {
+  id        Int      @id @default(autoincrement())
+  shop      String   @default("")
+  orderId   String   @map("order_id")
+  revenue   Float    @default(0)
+  currency  String   @default("USD")
+  source    String   @default("")
+  medium    String   @default("")
+  campaign  String   @default("")
+  channel   String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([shop, orderId])
+  @@index([shop, createdAt])
+  @@index([shop, source])
+  @@map("tyt_orders")
 }
 
 model Campaign {
