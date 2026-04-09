@@ -47,7 +47,8 @@
       "Bash(ls .env*)",
       "Bash(copy \"app\\\\routes\\\\app._index.tsx\" \"app\\\\routes\\\\app.dashboard.tsx\")",
       "Bash(node -e \"require\\('dotenv'\\).config\\(\\); console.log\\(process.env.DIRECT_URL ? 'has DIRECT_URL' : 'no DIRECT_URL'\\);\")",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:shopify-track-your-traffic-34cd.vercel.app)"
     ]
   }
 }
