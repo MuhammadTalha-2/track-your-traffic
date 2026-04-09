@@ -190,6 +190,8 @@ export default function CampaignsPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [pendingModal, setPendingModal] = useState<"form" | "delete" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting]     = useState(false);
+  const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
 
   const set = (field: keyof CampaignFormData) => (e: any) => {
     // s-number-field and s-date-field dispatch CustomEvent with value in e.detail;
@@ -245,23 +247,33 @@ export default function CampaignsPage() {
 
   const handleDelete = useCallback(async () => {
     if (!deleteTarget) return;
-    await fetch("/app/campaigns", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ intent: "delete", id: deleteTarget.id }),
-    });
-    modalHide("delete-confirm-modal");
-    setDeleteTarget(null);
-    revalidator.revalidate();
+    setIsDeleting(true);
+    try {
+      await fetch("/app/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent: "delete", id: deleteTarget.id }),
+      });
+      modalHide("delete-confirm-modal");
+      setDeleteTarget(null);
+      revalidator.revalidate();
+    } finally {
+      setIsDeleting(false);
+    }
   }, [deleteTarget, revalidator]);
 
   const handleDuplicate = useCallback(async (id: number) => {
-    await fetch("/app/campaigns", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ intent: "duplicate", id }),
-    });
-    revalidator.revalidate();
+    setDuplicatingId(id);
+    try {
+      await fetch("/app/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent: "duplicate", id }),
+      });
+      revalidator.revalidate();
+    } finally {
+      setDuplicatingId(null);
+    }
   }, [revalidator]);
 
   // ── Early return AFTER all hooks ──────────────────────────────────────────
@@ -404,7 +416,8 @@ export default function CampaignsPage() {
                       />
                       <s-button
                         variant="tertiary"
-                        icon="duplicate"
+                        icon={duplicatingId === c.id ? "spinner" : "duplicate"}
+                        disabled={duplicatingId === c.id ? true : undefined}
                         onClick={() => handleDuplicate(c.id)}
                         accessibility-label="Duplicate campaign"
                       />
@@ -609,8 +622,10 @@ export default function CampaignsPage() {
           variant="primary"
           tone="critical"
           onClick={handleDelete}
+          disabled={isDeleting ? true : undefined}
+          icon={isDeleting ? "spinner" : undefined}
         >
-          Delete Campaign
+          {isDeleting ? "Deleting…" : "Delete Campaign"}
         </s-button>
         <s-button
           slot="secondary-actions"

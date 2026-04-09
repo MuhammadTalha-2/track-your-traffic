@@ -100,8 +100,9 @@ export default function SettingsPage() {
 
   const [tab,    setTab]    = useState<Tab>("tracking");
   const [form,   setForm]   = useState(settings);
-  const [saving, setSaving] = useState(false);
-  const [saved,  setSaved]  = useState(false);
+  const [saving,   setSaving]   = useState(false);
+  const [saved,    setSaved]    = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
 
   // IP auto-detect (fetched client-side to get the real browser IP)
   const [detectedIp, setDetectedIp] = useState<string>("");
@@ -158,13 +159,18 @@ export default function SettingsPage() {
 
   // ── Purge ─────────────────────────────────────────────────────────────────
   const handlePurge = useCallback(async () => {
-    await fetch("/app/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ intent: "purge" }),
-    });
-    modalHide("purge-confirm-modal");
-    revalidator.revalidate();
+    setIsPurging(true);
+    try {
+      await fetch("/app/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent: "purge" }),
+      });
+      modalHide("purge-confirm-modal");
+      revalidator.revalidate();
+    } finally {
+      setIsPurging(false);
+    }
   }, [revalidator]);
 
   // ── Export CSV ────────────────────────────────────────────────────────────
@@ -474,8 +480,15 @@ export default function SettingsPage() {
             Campaigns and settings will be preserved.
           </s-text>
         </s-stack>
-        <s-button slot="primary-action" variant="primary" tone="critical" onClick={handlePurge}>
-          Purge All Data
+        <s-button
+          slot="primary-action"
+          variant="primary"
+          tone="critical"
+          onClick={handlePurge}
+          disabled={isPurging ? true : undefined}
+          icon={isPurging ? "spinner" : undefined}
+        >
+          {isPurging ? "Purging…" : "Purge All Data"}
         </s-button>
         <s-button slot="secondary-actions" commandFor="purge-confirm-modal" command="--hide">
           Cancel
