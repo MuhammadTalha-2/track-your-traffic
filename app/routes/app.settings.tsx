@@ -186,7 +186,7 @@ export default function SettingsPage() {
       <s-button
         slot="primary-action"
         variant="primary"
-        icon={saved ? "check" : "save"}
+        icon={saved ? "check" : "check-circle"}
         onClick={handleSave}
       >
         {saving ? "Saving…" : saved ? "Saved!" : "Save Settings"}
