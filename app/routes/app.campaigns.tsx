@@ -298,6 +298,18 @@ export default function CampaignsPage() {
 
   return (
     <s-page heading="Campaigns" inline-size="full">
+      <style>{`
+        *, *::before, *::after { box-sizing: border-box; }
+        /* Filter tabs scroll horizontally on small screens */
+        .tyt-filter-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+        /* Table scrolls inside its container */
+        .tyt-camp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+        /* Compact action buttons on mobile */
+        @media (max-width: 600px) {
+          .tyt-camp-actions s-button { --s-button-padding-inline: 6px; }
+        }
+      `}</style>
+
       {/* Primary action */}
       <s-button
         slot="primary-action"
@@ -311,23 +323,27 @@ export default function CampaignsPage() {
       {/* ── Status filter tabs ─────────────────────────────────────────── */}
       <s-section padding="none">
         <s-box padding="base">
+          <div className="tyt-filter-wrap">
           <s-stack direction="inline" gap="small-200">
             {tabs.map(({ key, label }) => (
               <s-button
                 key={key}
                 variant={currentStatus === key ? "primary" : "secondary"}
                 onClick={() => filterTab(key)}
+
               >
                 {label}
               </s-button>
             ))}
           </s-stack>
+          </div>
         </s-box>
       </s-section>
 
       {/* ── Campaign table ─────────────────────────────────────────────── */}
       {campaigns.length > 0 ? (
         <s-section padding="none">
+          <div className="tyt-camp-table-wrap">
           <s-table variant="auto" accessibility-label="Campaign list">
             <s-table-header-row>
               <s-table-header list-slot="primary">Campaign</s-table-header>
@@ -387,7 +403,7 @@ export default function CampaignsPage() {
 
                   {/* Row action menu */}
                   <s-table-cell>
-                    <s-stack direction="inline" gap="small-100">
+                    <s-stack direction="inline" gap="small-100" className="tyt-camp-actions">
                       <s-button
                         variant="tertiary"
                         icon="view"
@@ -437,6 +453,7 @@ export default function CampaignsPage() {
               ))}
             </s-table-body>
           </s-table>
+          </div>
         </s-section>
       ) : (
         /* ── Empty state ────────────────────────────────────────────────── */

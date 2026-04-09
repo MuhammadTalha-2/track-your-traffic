@@ -95,11 +95,11 @@ function MetricCard({
 function Bar({ value, max, color = "#2c6ecb" }: { value: number; max: number; color?: string }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 80 }}>
-      <div style={{ flex: 1, height: 6, background: "#e1e3e5", borderRadius: 3, overflow: "hidden" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "6px", width: "100%", minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, height: 6, background: "#e1e3e5", borderRadius: 3, overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 3, transition: "width .3s" }} />
       </div>
-      <span style={{ fontSize: 11, color: "#6d7175", minWidth: 28, textAlign: "right" }}>{pct}%</span>
+      <span style={{ fontSize: 11, color: "#6d7175", minWidth: 28, textAlign: "right", flexShrink: 0 }}>{pct}%</span>
     </div>
   );
 }
@@ -218,36 +218,48 @@ export default function Dashboard() {
   return (
     <s-page heading="Track Your Traffic" inline-size="full">
       <style>{`
-        .tyt-kpi-grid      { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
-        .tyt-two-col-grid  { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:0 0 16px; }
-        .tyt-three-col-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; padding:0 0 16px; }
+        *, *::before, *::after { box-sizing: border-box; }
+        .tyt-kpi-grid       { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+        .tyt-two-col-grid   { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:0 0 16px; }
+        .tyt-three-col-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; padding:0 0 16px; }
+        /* Critical: prevent grid children from overflowing their cell */
+        .tyt-two-col-grid   > *,
+        .tyt-three-col-grid > * { min-width: 0; overflow: hidden; }
+        /* Scrollable table wrapper so long content scrolls inside the card */
+        .tyt-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+        .tyt-table-wrap table,
+        .tyt-table-wrap s-table { width: 100%; }
+        /* Period selector scrolls horizontally on very small screens */
+        .tyt-period-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
         @media (max-width:1100px) { .tyt-three-col-grid { grid-template-columns:1fr 1fr; } }
         @media (max-width:900px)  { .tyt-kpi-grid { grid-template-columns:repeat(2,1fr); } }
         @media (max-width:600px)  {
-          .tyt-kpi-grid { grid-template-columns:1fr; }
-          .tyt-two-col-grid  { grid-template-columns:1fr; }
-          .tyt-three-col-grid{ grid-template-columns:1fr; }
+          .tyt-kpi-grid       { grid-template-columns:1fr; }
+          .tyt-two-col-grid   { grid-template-columns:1fr; }
+          .tyt-three-col-grid { grid-template-columns:1fr; }
         }
       `}</style>
 
       {/* ── Period selector ──────────────────────────────────────────────── */}
       <s-section padding="none">
         <s-box padding="base">
-          <s-stack direction="inline" gap="small-200" align-items="center">
-            <s-text color="subdued">Period:</s-text>
-            {DATE_RANGES.map((r) => (
-              <s-button
-                key={r.value}
-                variant={days === r.value ? "primary" : "secondary"}
-                onClick={() => {
-                  setDays(r.value);
-                  navigate(`?days=${r.value}`, { replace: true });
-                }}
-              >
-                {r.label}
-              </s-button>
-            ))}
-          </s-stack>
+          <div className="tyt-period-wrap">
+            <s-stack direction="inline" gap="small-200" align-items="center">
+              <s-text color="subdued">Period:</s-text>
+              {DATE_RANGES.map((r) => (
+                <s-button
+                  key={r.value}
+                  variant={days === r.value ? "primary" : "secondary"}
+                  onClick={() => {
+                    setDays(r.value);
+                    navigate(`?days=${r.value}`, { replace: true });
+                  }}
+                >
+                  {r.label}
+                </s-button>
+              ))}
+            </s-stack>
+          </div>
         </s-box>
       </s-section>
 
@@ -288,32 +300,34 @@ export default function Dashboard() {
       {/* ── Traffic by Channel ───────────────────────────────────────────── */}
       <s-section heading="Traffic by Channel">
         {stats.byChannel.length > 0 ? (
-          <s-table variant="auto" accessibility-label="Traffic by channel">
-            <s-table-header-row>
-              <s-table-header list-slot="primary">Channel</s-table-header>
-              <s-table-header list-slot="labeled" format="numeric">Visits</s-table-header>
-              <s-table-header list-slot="labeled" format="numeric">Uniques</s-table-header>
-              <s-table-header list-slot="labeled" format="numeric">Share</s-table-header>
-            </s-table-header-row>
-            <s-table-body>
-              {stats.byChannel.map((row) => {
-                const share = stats.totalVisits > 0
-                  ? Math.round((row.visits / stats.totalVisits) * 100) : 0;
-                return (
-                  <s-table-row key={row.channel}>
-                    <s-table-cell>
-                      <s-badge tone={(CHANNEL_TONE[row.channel] ?? "neutral") as any}>
-                        {channelLabel(row.channel)}
-                      </s-badge>
-                    </s-table-cell>
-                    <s-table-cell>{row.visits.toLocaleString()}</s-table-cell>
-                    <s-table-cell>{row.uniques.toLocaleString()}</s-table-cell>
-                    <s-table-cell>{share}%</s-table-cell>
-                  </s-table-row>
-                );
-              })}
-            </s-table-body>
-          </s-table>
+          <div className="tyt-table-wrap">
+            <s-table variant="auto" accessibility-label="Traffic by channel">
+              <s-table-header-row>
+                <s-table-header list-slot="primary">Channel</s-table-header>
+                <s-table-header list-slot="labeled" format="numeric">Visits</s-table-header>
+                <s-table-header list-slot="labeled" format="numeric">Uniques</s-table-header>
+                <s-table-header list-slot="labeled" format="numeric">Share</s-table-header>
+              </s-table-header-row>
+              <s-table-body>
+                {stats.byChannel.map((row) => {
+                  const share = stats.totalVisits > 0
+                    ? Math.round((row.visits / stats.totalVisits) * 100) : 0;
+                  return (
+                    <s-table-row key={row.channel}>
+                      <s-table-cell>
+                        <s-badge tone={(CHANNEL_TONE[row.channel] ?? "neutral") as any}>
+                          {channelLabel(row.channel)}
+                        </s-badge>
+                      </s-table-cell>
+                      <s-table-cell>{row.visits.toLocaleString()}</s-table-cell>
+                      <s-table-cell>{row.uniques.toLocaleString()}</s-table-cell>
+                      <s-table-cell>{share}%</s-table-cell>
+                    </s-table-row>
+                  );
+                })}
+              </s-table-body>
+            </s-table>
+          </div>
         ) : (
           <s-box padding="base">
             <s-stack align-items="center" gap="small-200">
@@ -327,72 +341,79 @@ export default function Dashboard() {
 
       {/* ── Top Sources + Top Pages ──────────────────────────────────────── */}
       <div className="tyt-two-col-grid">
-        <s-section heading="Top Sources">
-          {stats.topSources.length > 0 ? (
-            <s-table variant="auto" accessibility-label="Top traffic sources">
-              <s-table-header-row>
-                <s-table-header list-slot="primary">Source / Medium</s-table-header>
-                <s-table-header list-slot="labeled" format="numeric">Visits</s-table-header>
-                <s-table-header list-slot="labeled">Share</s-table-header>
-              </s-table-header-row>
-              <s-table-body>
-                {stats.topSources.map((row) => (
-                  <s-table-row key={`${row.source}-${row.medium}`}>
-                    <s-table-cell>
-                      <div style={{ maxWidth: 200 }}>
-                        <s-stack gap="small-100">
-                          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            <s-text type="strong">{row.source}</s-text>
-                          </div>
-                          {row.medium && <s-text color="subdued">{row.medium}</s-text>}
-                        </s-stack>
-                      </div>
-                    </s-table-cell>
-                    <s-table-cell>{row.visits.toLocaleString()}</s-table-cell>
-                    <s-table-cell>
-                      <Bar value={row.visits} max={maxSourceVisits} color="#2c6ecb" />
-                    </s-table-cell>
-                  </s-table-row>
-                ))}
-              </s-table-body>
-            </s-table>
-          ) : (
-            <s-box padding="base"><s-text color="subdued">No source data yet.</s-text></s-box>
-          )}
-        </s-section>
+        <div style={{ minWidth: 0, overflow: "hidden" }}>
+          <s-section heading="Top Sources">
+            {stats.topSources.length > 0 ? (
+              <div className="tyt-table-wrap">
+                <s-table variant="auto" accessibility-label="Top traffic sources">
+                  <s-table-header-row>
+                    <s-table-header list-slot="primary">Source / Medium</s-table-header>
+                    <s-table-header list-slot="labeled" format="numeric">Visits</s-table-header>
+                    <s-table-header list-slot="labeled">Share</s-table-header>
+                  </s-table-header-row>
+                  <s-table-body>
+                    {stats.topSources.map((row) => (
+                      <s-table-row key={`${row.source}-${row.medium}`}>
+                        <s-table-cell>
+                          <s-stack gap="small-100">
+                            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                              <s-text type="strong">{row.source}</s-text>
+                            </div>
+                            {row.medium && <s-text color="subdued">{row.medium}</s-text>}
+                          </s-stack>
+                        </s-table-cell>
+                        <s-table-cell>{row.visits.toLocaleString()}</s-table-cell>
+                        <s-table-cell>
+                          <Bar value={row.visits} max={maxSourceVisits} color="#2c6ecb" />
+                        </s-table-cell>
+                      </s-table-row>
+                    ))}
+                  </s-table-body>
+                </s-table>
+              </div>
+            ) : (
+              <s-box padding="base"><s-text color="subdued">No source data yet.</s-text></s-box>
+            )}
+          </s-section>
+        </div>
 
-        <s-section heading="Top Landing Pages">
-          {stats.topPages.length > 0 ? (
-            <s-table variant="auto" accessibility-label="Top landing pages">
-              <s-table-header-row>
-                <s-table-header list-slot="primary">Page</s-table-header>
-                <s-table-header list-slot="labeled" format="numeric">Visits</s-table-header>
-                <s-table-header list-slot="labeled">Share</s-table-header>
-              </s-table-header-row>
-              <s-table-body>
-                {stats.topPages.map((row) => (
-                  <s-table-row key={row.landingPage}>
-                    <s-table-cell>
-                      <div title={row.landingPage || "/"} style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        <s-text>{row.landingPage || "/"}</s-text>
-                      </div>
-                    </s-table-cell>
-                    <s-table-cell>{row.visits.toLocaleString()}</s-table-cell>
-                    <s-table-cell>
-                      <Bar value={row.visits} max={maxPageVisits} color="#10b981" />
-                    </s-table-cell>
-                  </s-table-row>
-                ))}
-              </s-table-body>
-            </s-table>
-          ) : (
-            <s-box padding="base"><s-text color="subdued">No page data yet.</s-text></s-box>
-          )}
-        </s-section>
+        <div style={{ minWidth: 0, overflow: "hidden" }}>
+          <s-section heading="Top Landing Pages">
+            {stats.topPages.length > 0 ? (
+              <div className="tyt-table-wrap">
+                <s-table variant="auto" accessibility-label="Top landing pages">
+                  <s-table-header-row>
+                    <s-table-header list-slot="primary">Page</s-table-header>
+                    <s-table-header list-slot="labeled" format="numeric">Visits</s-table-header>
+                    <s-table-header list-slot="labeled">Share</s-table-header>
+                  </s-table-header-row>
+                  <s-table-body>
+                    {stats.topPages.map((row) => (
+                      <s-table-row key={row.landingPage}>
+                        <s-table-cell>
+                          <div title={row.landingPage || "/"} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                            <s-text>{row.landingPage || "/"}</s-text>
+                          </div>
+                        </s-table-cell>
+                        <s-table-cell>{row.visits.toLocaleString()}</s-table-cell>
+                        <s-table-cell>
+                          <Bar value={row.visits} max={maxPageVisits} color="#10b981" />
+                        </s-table-cell>
+                      </s-table-row>
+                    ))}
+                  </s-table-body>
+                </s-table>
+              </div>
+            ) : (
+              <s-box padding="base"><s-text color="subdued">No page data yet.</s-text></s-box>
+            )}
+          </s-section>
+        </div>
       </div>
 
       {/* ── Device + Country ─────────────────────────────────────────────── */}
       <div className="tyt-two-col-grid">
+        <div style={{ minWidth: 0, overflow: "hidden" }}>
         <s-section heading="Devices">
           {stats.byDevice.length > 0 ? (
             <s-stack gap="base">
@@ -426,29 +447,33 @@ export default function Dashboard() {
             <s-box padding="base"><s-text color="subdued">No device data yet.</s-text></s-box>
           )}
         </s-section>
+        </div>
 
+        <div style={{ minWidth: 0, overflow: "hidden" }}>
         <s-section heading="Top Countries">
           {stats.byCountry.length > 0 ? (
-            <s-table variant="auto" accessibility-label="Top countries">
-              <s-table-header-row>
-                <s-table-header list-slot="primary">Country</s-table-header>
-                <s-table-header list-slot="labeled" format="numeric">Visits</s-table-header>
-                <s-table-header list-slot="labeled">Share</s-table-header>
-              </s-table-header-row>
-              <s-table-body>
-                {stats.byCountry.map((row) => (
-                  <s-table-row key={row.country}>
-                    <s-table-cell>
-                      <s-text>{countryName(row.country)}</s-text>
-                    </s-table-cell>
-                    <s-table-cell>{row.visits.toLocaleString()}</s-table-cell>
-                    <s-table-cell>
-                      <Bar value={row.visits} max={maxCountryVisits} color="#f59e0b" />
-                    </s-table-cell>
-                  </s-table-row>
-                ))}
-              </s-table-body>
-            </s-table>
+            <div className="tyt-table-wrap">
+              <s-table variant="auto" accessibility-label="Top countries">
+                <s-table-header-row>
+                  <s-table-header list-slot="primary">Country</s-table-header>
+                  <s-table-header list-slot="labeled" format="numeric">Visits</s-table-header>
+                  <s-table-header list-slot="labeled">Share</s-table-header>
+                </s-table-header-row>
+                <s-table-body>
+                  {stats.byCountry.map((row) => (
+                    <s-table-row key={row.country}>
+                      <s-table-cell>
+                        <s-text>{countryName(row.country)}</s-text>
+                      </s-table-cell>
+                      <s-table-cell>{row.visits.toLocaleString()}</s-table-cell>
+                      <s-table-cell>
+                        <Bar value={row.visits} max={maxCountryVisits} color="#f59e0b" />
+                      </s-table-cell>
+                    </s-table-row>
+                  ))}
+                </s-table-body>
+              </s-table>
+            </div>
           ) : (
             <s-box padding="base">
               <s-text color="subdued">
@@ -457,33 +482,36 @@ export default function Dashboard() {
             </s-box>
           )}
         </s-section>
+        </div>
       </div>
 
       {/* ── Top Campaigns ────────────────────────────────────────────────── */}
       {stats.topCampaigns.length > 0 && (
         <s-section heading="Top Campaigns">
-          <s-table variant="auto" accessibility-label="Top campaigns">
-            <s-table-header-row>
-              <s-table-header list-slot="primary">Campaign</s-table-header>
-              <s-table-header list-slot="labeled" format="numeric">Visits</s-table-header>
-              <s-table-header list-slot="labeled">Share</s-table-header>
-            </s-table-header-row>
-            <s-table-body>
-              {stats.topCampaigns.map((row) => (
-                <s-table-row key={row.campaign}>
-                  <s-table-cell>{row.campaign}</s-table-cell>
-                  <s-table-cell>{row.visits.toLocaleString()}</s-table-cell>
-                  <s-table-cell>
-                    <Bar
-                      value={row.visits}
-                      max={Math.max(...stats.topCampaigns.map((r) => r.visits), 1)}
-                      color="#a855f7"
-                    />
-                  </s-table-cell>
-                </s-table-row>
-              ))}
-            </s-table-body>
-          </s-table>
+          <div className="tyt-table-wrap">
+            <s-table variant="auto" accessibility-label="Top campaigns">
+              <s-table-header-row>
+                <s-table-header list-slot="primary">Campaign</s-table-header>
+                <s-table-header list-slot="labeled" format="numeric">Visits</s-table-header>
+                <s-table-header list-slot="labeled">Share</s-table-header>
+              </s-table-header-row>
+              <s-table-body>
+                {stats.topCampaigns.map((row) => (
+                  <s-table-row key={row.campaign}>
+                    <s-table-cell>{row.campaign}</s-table-cell>
+                    <s-table-cell>{row.visits.toLocaleString()}</s-table-cell>
+                    <s-table-cell>
+                      <Bar
+                        value={row.visits}
+                        max={Math.max(...stats.topCampaigns.map((r) => r.visits), 1)}
+                        color="#a855f7"
+                      />
+                    </s-table-cell>
+                  </s-table-row>
+                ))}
+              </s-table-body>
+            </s-table>
+          </div>
         </s-section>
       )}
     </s-page>
