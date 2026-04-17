@@ -85,7 +85,7 @@ function Header() {
           <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: "-0.02em" }}>Track Your Traffic</span>
         </a>
 
-        {/* Nav */}
+        {/* Nav + CTA grouped on the right */}
         <nav style={{ display: "flex", alignItems: "center", gap: 4 }}>
           {[
             { label: "Features", href: "/features" },
@@ -101,7 +101,7 @@ function Header() {
                 borderRadius: 6,
                 textDecoration: "none",
                 fontSize: 14,
-                fontWeight: active ? 600 : 400,
+                fontWeight: active ? 600 : 500,
                 color: active ? BLUE : GRAY,
                 background: active ? "#eff6ff" : "transparent",
               }}
@@ -109,26 +109,23 @@ function Header() {
               {label}
             </a>
           ))}
+          <a
+            href="/"
+            style={{
+              marginLeft: 8,
+              padding: "8px 18px",
+              background: BLUE,
+              color: "#fff",
+              borderRadius: 8,
+              fontWeight: 600,
+              fontSize: 14,
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Install App
+          </a>
         </nav>
-
-        {/* CTA */}
-        <a
-          href="https://apps.shopify.com"
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            padding: "8px 18px",
-            background: BLUE,
-            color: "#fff",
-            borderRadius: 8,
-            fontWeight: 600,
-            fontSize: 14,
-            textDecoration: "none",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Install App
-        </a>
       </div>
     </header>
   );

@@ -13,16 +13,21 @@
 
 /* ── Nav ────────────────────────────────────────────────────────────────── */
 .nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  height: 64px;
   border-bottom: 1px solid #e5e7eb;
   background: #ffffff;
   position: sticky;
   top: 0;
   z-index: 100;
+}
+
+.navInner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .navBrand {
@@ -34,6 +39,12 @@
   color: #111827;
   text-decoration: none;
   letter-spacing: -0.02em;
+}
+
+.navRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .navLinks {
@@ -270,11 +281,6 @@
   box-shadow: 0 4px 12px rgba(44, 110, 203, 0.1);
 }
 
-.featureIcon {
-  font-size: 28px;
-  line-height: 1;
-}
-
 .featureTitle {
   font-size: 15px;
   font-weight: 700;
@@ -315,6 +321,9 @@
   }
   .navLinks {
     display: none;
+  }
+  .navRight {
+    gap: 0;
   }
   .stats {
     gap: 24px;
