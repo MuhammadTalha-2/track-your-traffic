@@ -2,6 +2,7 @@ import { useState } from "react";
 
 export default function HelpPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
@@ -55,6 +56,73 @@ export default function HelpPage() {
 
       {/* Header */}
       <header style={{ background: "#ffffff", borderBottom: "1px solid #e5e7eb", position: "sticky", top: 0, zIndex: 100 }}>
+        <style>{`
+@media (max-width: 768px) {
+  .tyt-nav-links { display: none !important; }
+  .tyt-nav-cta   { display: none !important; }
+  .tyt-hamburger { display: flex !important; }
+  .tyt-mobile-menu { display: flex; }
+}
+.tyt-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.tyt-hamburger:hover { background: #f3f4f6; }
+.tyt-hamburger-bar {
+  width: 22px;
+  height: 2px;
+  background: #374151;
+  border-radius: 2px;
+  transition: transform 0.2s, opacity 0.2s;
+  display: block;
+}
+.tyt-mobile-menu {
+  display: none;
+  flex-direction: column;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+  padding: 12px 16px 16px;
+  gap: 4px;
+  position: absolute;
+  top: 64px;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+}
+.tyt-mobile-link {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #374151;
+  text-decoration: none;
+  display: block;
+}
+.tyt-mobile-link:hover { background: #f3f4f6; }
+.tyt-mobile-cta {
+  margin-top: 8px;
+  padding: 11px 14px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: #2c6ecb;
+  text-decoration: none;
+  text-align: center;
+  display: block;
+}
+        `}</style>
         <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: "64px" }}>
           {/* Logo */}
           <a href="/" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none" }}>
@@ -68,19 +136,38 @@ export default function HelpPage() {
           </a>
 
           {/* Nav */}
-          <nav style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <nav className="tyt-nav-links" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
             <a href="/features" style={{ padding: "6px 14px", borderRadius: "6px", textDecoration: "none", fontSize: "14px", fontWeight: 500, color: "#6b7280" }}>Features</a>
             <a href="/pricing" style={{ padding: "6px 14px", borderRadius: "6px", textDecoration: "none", fontSize: "14px", fontWeight: 500, color: "#6b7280" }}>Pricing</a>
             <a href="/help" style={{ padding: "6px 14px", borderRadius: "6px", textDecoration: "none", fontSize: "14px", fontWeight: 500, color: "#2c6ecb", background: "#eff6ff" }}>Help</a>
             <a href="/privacy" style={{ padding: "6px 14px", borderRadius: "6px", textDecoration: "none", fontSize: "14px", fontWeight: 500, color: "#6b7280" }}>Privacy</a>
             <a
               href="mailto:support@addoneplugins.com"
+              className="tyt-nav-cta"
               style={{ marginLeft: "8px", padding: "8px 16px", borderRadius: "8px", textDecoration: "none", fontSize: "14px", fontWeight: 600, color: "#ffffff", background: "#2c6ecb" }}
             >
               Get Support
             </a>
           </nav>
+          <button
+            className="tyt-hamburger"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMenuOpen(o => !o)}
+          >
+            <span className="tyt-hamburger-bar" style={menuOpen ? { transform: "translateY(7px) rotate(45deg)" } : {}} />
+            <span className="tyt-hamburger-bar" style={menuOpen ? { opacity: 0 } : {}} />
+            <span className="tyt-hamburger-bar" style={menuOpen ? { transform: "translateY(-7px) rotate(-45deg)" } : {}} />
+          </button>
         </div>
+        {menuOpen && (
+          <nav className="tyt-mobile-menu">
+            <a href="/features" className="tyt-mobile-link" onClick={() => setMenuOpen(false)}>Features</a>
+            <a href="/pricing"  className="tyt-mobile-link" onClick={() => setMenuOpen(false)}>Pricing</a>
+            <a href="/help"     className="tyt-mobile-link" onClick={() => setMenuOpen(false)}>Help</a>
+            <a href="/privacy"  className="tyt-mobile-link" onClick={() => setMenuOpen(false)}>Privacy</a>
+            <a href="/"         className="tyt-mobile-cta"  onClick={() => setMenuOpen(false)}>Install App</a>
+          </nav>
+        )}
       </header>
 
       <main style={{ flex: 1 }}>

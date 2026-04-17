@@ -1,11 +1,79 @@
-import React from "react";
+import React, { useState } from "react";
 
 export default function FeaturesPage() {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div style={{ fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif", margin: 0, padding: 0, backgroundColor: "#f9fafb", color: "#111827" }}>
 
       {/* Header */}
       <header style={{ backgroundColor: "#ffffff", borderBottom: "1px solid #e5e7eb", position: "sticky", top: 0, zIndex: 100 }}>
+        <style>{`
+@media (max-width: 768px) {
+  .tyt-nav-links { display: none !important; }
+  .tyt-nav-cta   { display: none !important; }
+  .tyt-hamburger { display: flex !important; }
+  .tyt-mobile-menu { display: flex; }
+}
+.tyt-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.tyt-hamburger:hover { background: #f3f4f6; }
+.tyt-hamburger-bar {
+  width: 22px;
+  height: 2px;
+  background: #374151;
+  border-radius: 2px;
+  transition: transform 0.2s, opacity 0.2s;
+  display: block;
+}
+.tyt-mobile-menu {
+  display: none;
+  flex-direction: column;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+  padding: 12px 16px 16px;
+  gap: 4px;
+  position: absolute;
+  top: 64px;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+}
+.tyt-mobile-link {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #374151;
+  text-decoration: none;
+  display: block;
+}
+.tyt-mobile-link:hover { background: #f3f4f6; }
+.tyt-mobile-cta {
+  margin-top: 8px;
+  padding: 11px 14px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: #2c6ecb;
+  text-decoration: none;
+  text-align: center;
+  display: block;
+}
+        `}</style>
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
           {/* Logo */}
           <a href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
@@ -19,14 +87,32 @@ export default function FeaturesPage() {
           </a>
 
           {/* Nav */}
-          <nav style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <nav className="tyt-nav-links" style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <a href="/features" style={{ padding: "6px 14px", borderRadius: 6, fontSize: 14, fontWeight: 600, color: "#2c6ecb", backgroundColor: "#eff6ff", textDecoration: "none" }}>Features</a>
             <a href="/pricing" style={{ padding: "6px 14px", borderRadius: 6, fontSize: 14, fontWeight: 500, color: "#6b7280", textDecoration: "none", transition: "color 0.15s" }}>Pricing</a>
             <a href="/help" style={{ padding: "6px 14px", borderRadius: 6, fontSize: 14, fontWeight: 500, color: "#6b7280", textDecoration: "none" }}>Help</a>
             <a href="/privacy" style={{ padding: "6px 14px", borderRadius: 6, fontSize: 14, fontWeight: 500, color: "#6b7280", textDecoration: "none" }}>Privacy</a>
-            <a href="#" style={{ marginLeft: 8, padding: "8px 18px", borderRadius: 8, fontSize: 14, fontWeight: 600, color: "#ffffff", backgroundColor: "#2c6ecb", textDecoration: "none", boxShadow: "0 1px 3px rgba(44,110,203,0.3)" }}>Start Free Trial</a>
+            <a href="#" className="tyt-nav-cta" style={{ marginLeft: 8, padding: "8px 18px", borderRadius: 8, fontSize: 14, fontWeight: 600, color: "#ffffff", backgroundColor: "#2c6ecb", textDecoration: "none", boxShadow: "0 1px 3px rgba(44,110,203,0.3)" }}>Start Free Trial</a>
           </nav>
+          <button
+            className="tyt-hamburger"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMenuOpen(o => !o)}
+          >
+            <span className="tyt-hamburger-bar" style={menuOpen ? { transform: "translateY(7px) rotate(45deg)" } : {}} />
+            <span className="tyt-hamburger-bar" style={menuOpen ? { opacity: 0 } : {}} />
+            <span className="tyt-hamburger-bar" style={menuOpen ? { transform: "translateY(-7px) rotate(-45deg)" } : {}} />
+          </button>
         </div>
+        {menuOpen && (
+          <nav className="tyt-mobile-menu">
+            <a href="/features" className="tyt-mobile-link" onClick={() => setMenuOpen(false)}>Features</a>
+            <a href="/pricing"  className="tyt-mobile-link" onClick={() => setMenuOpen(false)}>Pricing</a>
+            <a href="/help"     className="tyt-mobile-link" onClick={() => setMenuOpen(false)}>Help</a>
+            <a href="/privacy"  className="tyt-mobile-link" onClick={() => setMenuOpen(false)}>Privacy</a>
+            <a href="/"         className="tyt-mobile-cta"  onClick={() => setMenuOpen(false)}>Install App</a>
+          </nav>
+        )}
       </header>
 
       {/* Hero Section */}

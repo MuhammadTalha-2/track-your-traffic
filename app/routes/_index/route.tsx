@@ -1,5 +1,6 @@
 import type { LoaderFunctionArgs } from "react-router";
 import { redirect, Form, useLoaderData } from "react-router";
+import { useState } from "react";
 
 import { login } from "../../shopify.server";
 
@@ -78,8 +79,16 @@ function IconExport() {
   );
 }
 
+const NAV_LINKS = [
+  { label: "Features", href: "/features" },
+  { label: "Pricing",  href: "/pricing"  },
+  { label: "Help",     href: "/help"      },
+  { label: "Privacy",  href: "/privacy"   },
+];
+
 export default function App() {
   const { showForm } = useLoaderData<typeof loader>();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <div className={styles.index}>
@@ -94,36 +103,62 @@ export default function App() {
 
           <div className={styles.navRight}>
             <nav className={styles.navLinks}>
-              {[
-                { label: "Features", href: "/features" },
-                { label: "Pricing",  href: "/pricing"  },
-                { label: "Help",     href: "/help"      },
-                { label: "Privacy",  href: "/privacy"   },
-              ].map(({ label, href }) => (
+              {NAV_LINKS.map(({ label, href }) => (
                 <a key={label} href={href} className={styles.navLink}>{label}</a>
               ))}
             </nav>
 
             {showForm && (
-              <Form method="post" action="/auth/login" style={{ display: "flex", alignItems: "center" }}>
-                <input type="hidden" name="shop" id="nav-shop-input" />
-                <a
-                  href="#install"
-                  className={styles.navCta}
-                  style={{ marginLeft: 8 }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const input = document.querySelector<HTMLInputElement>("input[name='shop']");
-                    input?.focus();
-                    input?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
-                >
-                  Install App
-                </a>
-              </Form>
+              <a
+                href="#install"
+                className={styles.navCta}
+                onClick={(e) => {
+                  e.preventDefault();
+                  const input = document.querySelector<HTMLInputElement>("input[name='shop']");
+                  input?.focus();
+                  input?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+              >
+                Install App
+              </a>
             )}
+
+            {/* Hamburger — mobile only */}
+            <button
+              className={styles.hamburger}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              <span className={styles.hamburgerBar} style={menuOpen ? { transform: "translateY(7px) rotate(45deg)" } : {}} />
+              <span className={styles.hamburgerBar} style={menuOpen ? { opacity: 0 } : {}} />
+              <span className={styles.hamburgerBar} style={menuOpen ? { transform: "translateY(-7px) rotate(-45deg)" } : {}} />
+            </button>
           </div>
         </div>
+
+        {/* Mobile dropdown */}
+        <nav className={`${styles.mobileMenu} ${menuOpen ? styles.mobileMenuOpen : ""}`}>
+          {NAV_LINKS.map(({ label, href }) => (
+            <a key={label} href={href} className={styles.mobileLink} onClick={() => setMenuOpen(false)}>
+              {label}
+            </a>
+          ))}
+          {showForm && (
+            <a
+              href="#install"
+              className={styles.mobileCta}
+              onClick={(e) => {
+                e.preventDefault();
+                setMenuOpen(false);
+                const input = document.querySelector<HTMLInputElement>("input[name='shop']");
+                input?.focus();
+                input?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
+            >
+              Install App
+            </a>
+          )}
+        </nav>
       </header>
 
       {/* ── Hero ───────────────────────────────────────────────────── */}
